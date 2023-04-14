@@ -2,13 +2,17 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { AuthDto } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
-import { jwtSecret } from 'src/utils/constants';
+import { CONFIRM_EMAIL_PREFIX, jwtSecret } from 'src/utils/constants';
+import { sendConfirmUserEmail } from 'src/utils/sendConfirmUserEmail';
+import { confirmEmailLink } from 'src/utils/confirmEmailLink';
+import { redis } from 'src/redis';
 
 @Injectable()
 export class AuthService {
@@ -27,12 +31,14 @@ export class AuthService {
 
     const hashedPassword = await this.hashPassword(password);
 
-    await this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         email,
         hashedPassword,
       },
     });
+
+    await sendConfirmUserEmail(email, await confirmEmailLink(user.id));
 
     return { message: 'User created succefully' };
   }
@@ -58,6 +64,10 @@ export class AuthService {
 
     if (!foundUser) {
       throw new BadRequestException('Wrong credentials');
+    }
+
+    if (!foundUser.isEmailConfirmed) {
+      throw new BadRequestException('Your account has not been activated.');
     }
 
     const compareSuccess = await this.comparePasswords({
@@ -94,5 +104,23 @@ export class AuthService {
     });
 
     return token;
+  }
+
+  async confirmEmail(id: string, res: Response) {
+    const userId = await redis.get(`${CONFIRM_EMAIL_PREFIX}${id}`);
+
+    if (!userId) {
+      throw new NotFoundException();
+    }
+    await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        isEmailConfirmed: true,
+      },
+    });
+
+    res.send('Confirm user successfully.');
   }
 }
