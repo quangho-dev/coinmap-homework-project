@@ -1,0 +1,20 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type SignUpResponse {
+  message: String!
+}
+
+type Query {
+  sayHello: String!
+}
+
+type Mutation {
+  signup(signUpInput: SignUpInput!): SignUpResponse!
+}
+
+input SignUpInput {
+  email: String!
+  password: String!
+}
