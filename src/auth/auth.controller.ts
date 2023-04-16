@@ -15,11 +15,6 @@ import { Response as Res } from 'express';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('signup')
-  signup(@Body() dto: AuthDto) {
-    return this.authService.signup(dto);
-  }
-
   @Post('signin')
   signin(@Request() req, @Response() res, @Body() dto: AuthDto) {
     return this.authService.signin(dto, req, res);
